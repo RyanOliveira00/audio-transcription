@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcrição de Áudio</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        #dropZone {
+            border: 2px dashed #ccc;
+            border-radius: 20px;
+            width: 480px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        #dropZone.highlight {
+            border-color: #007bff;
+        }
+        #fileInput {
+            display: none;
+        }
+        #uploadButton {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #transcription {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        #loading {
+            display: none;
+            margin-top: 20px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Transcrição de Áudio</h1>
+    <div id="dropZone">
+        <p>Arraste e solte o arquivo de áudio aqui ou</p>
+        <input type="file" id="fileInput" accept=".wav,.mp3,.ogg,.m4a,.flac,.aac,.wma,.aiff,.alac,.webm,.mp4">
+        <button id="uploadButton">Selecione um arquivo</button>
+    </div>
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Transcrevendo o áudio...</p>
+    </div>
+    <div id="transcription"></div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadButton = document.getElementById('uploadButton');
+        const transcriptionDiv = document.getElementById('transcription');
+        const loadingDiv = document.getElementById('loading');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('highlight');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('highlight');
+        }
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        uploadButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                const file = files[0];
+                uploadFile(file);
+            }
+        }
+
+        function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Mostrar o indicador de carregamento
+            loadingDiv.style.display = 'block';
+            transcriptionDiv.textContent = '';
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Esconder o indicador de carregamento
+                loadingDiv.style.display = 'none';
+
+                if (data.transcription) {
+                    transcriptionDiv.textContent = data.transcription;
+                } else if (data.error) {
+                    transcriptionDiv.textContent = `Erro: ${data.error}`;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                transcriptionDiv.textContent = 'Ocorreu um erro ao processar o arquivo.';
+                // Esconder o indicador de carregamento em caso de erro
+                loadingDiv.style.display = 'none';
+            });
+        }
+    </script>
+</body>
+</html>
